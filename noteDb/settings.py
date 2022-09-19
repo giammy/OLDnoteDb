@@ -63,6 +63,10 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:4200',
 ]
 
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = True
+CORS_ALLOW_CREDENTIALS = True
+
 
 ROOT_URLCONF = 'noteDb.urls'
 
