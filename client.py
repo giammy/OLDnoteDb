@@ -27,7 +27,7 @@ theUrl = "http://127.0.0.1:8080/note"
 # to fill the database for testing purposes
 #
 def createStaffMember(username, email, secondaryEmail, name, surname, groupName, leaderOfGroup, qualification, organization, totalHoursPerYear, totalContractualHoursPerYear, parttimePercent, isTimeSheetEnabled, created, validFrom, validTo, note, officePhone, officeLocation, internalNote, lastChangeAuthor, lastChangeDate):
-    rid = createNote(rid=0, type="STAFFMEMBER", data="")
+    rid = createNote(rid=0, type="STAFFMEMBER", data="null") # if data="", the note is created with return code 400
     createNote(rid=rid, type="USERNAME", data=username)
     createNote(rid=rid, type="EMAIL", data=email)
     createNote(rid=rid, type="SECONDARYEMAIL", data=secondaryEmail)
@@ -96,6 +96,7 @@ def getEntities(whichType):
 # create a new note with a POST request
 def createNote(rid, type, data):
     resp = requests.post(url=theUrl, json={"rid": rid, "lid": 0, "type": type, "data": data})
+    # print(resp.status_code)
     if (resp.status_code == 200 or resp.status_code == 201 or resp.status_code == 202 or resp.status_code == 203):
         return resp.json()['id']
     else:
