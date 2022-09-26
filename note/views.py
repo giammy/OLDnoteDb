@@ -87,3 +87,20 @@ def noteSearch(request):
     note_serializer = NoteSerializer(notes, many=True)
     return JsonResponse(note_serializer.data, safe=False)
 
+@api_view(['GET'])
+def noteiSearch(request):
+    
+    id = request.GET.get('iid', None)
+    rid = request.GET.get('irid', None)
+    lid = request.GET.get('ilid', None)
+    type = request.GET.get('itype', None)
+    data = request.GET.get('idata', None)
+    
+    # create a dictionary with nonull values                                                                              
+    search_dict = {k: v for k, v in {'id'+'__icontains': id, 
+                   'rid'+'__icontains': rid, 'lid'+'__icontains': lid, 
+                   'type'+'__icontains': type, 'data'+'__icontains': data}.items() if v is not None}
+    notes = Note.objects.filter(**search_dict).all()
+
+    note_serializer = NoteSerializer(notes, many=True)
+    return JsonResponse(note_serializer.data, safe=False)
