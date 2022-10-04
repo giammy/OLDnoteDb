@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
+import os
+import logging
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -142,3 +144,17 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# folder containing files
+FILES_DIRECTORY = 'files'
+
+DATE_FORMAT_DB= "%Y-%m-%dT%H:%M:%S+0000"
+DATE_FORMAT_LOG= "%Y%m%dT%H%M%SZ"
+
+# log setup
+# level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+logging.basicConfig(format='%(asctime)s: %(levelname)s: %(name)s: %(message)s', 
+                    datefmt='%Y%m%dT%H%M%SZ', 
+                    filename='note.log', encoding='utf-8', level=logging.DEBUG)
+

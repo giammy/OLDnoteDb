@@ -10,3 +10,4 @@ class Note(models.Model):
 
     def __str__(self):
         return "{}, {}, {}, '{}', '{}'".format(self.id, self.rid, self.lid, self.type, self.data)
+
