@@ -3,7 +3,7 @@ from rest_framework import routers
 from . import views
 
 router = routers.DefaultRouter()
-router.register(r'file', views.FileUploadViewSet, basename='file')
+router.register(r'upload', views.FileUploadViewSet, basename='file')
 
 urlpatterns = [
     #path('', views.index, name='index'),
@@ -20,8 +20,8 @@ urlpatterns = [
     re_path(r'^note/q?(id=(?P<id>[0-9]+)&)?(rid=(?P<rid>[0-9]+)&)?(lid=(?P<lid>[0-9]+)&)?(type=(?P<type>[0-9A-Za-z]+)&)?(data=(?P<data>[0-9A-Za-z]+))?(iid=(?P<iid>[0-9]+)&)?(irid=(?P<irid>[0-9]+)&)?(ilid=(?P<ilid>[0-9]+)&)?(itype=(?P<itype>[0-9A-Za-z]+)&)?(idata=(?P<idata>[0-9A-Za-z]+))?$', views.noteQuery),
 
     # /upload/file/
-    # i.e: curl -F file=@qrlett/gl_QR.png http://127.0.0.1:8000/upload/file/
-    path('upload/', include(router.urls)),
+    # i.e: curl -F file=@qrlett/gl_QR.png http://127.0.0.1:8000/note/upload/  
+    path('note/', include(router.urls)),
 
     re_path(r'^note/download/(?P<id>[0-9]+)$', views.noteDownload),
 ]

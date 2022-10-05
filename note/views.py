@@ -188,6 +188,10 @@ def save_to_disk_uploaded_file(f):
             destination.write(chunk)
     return theName
 
+#
+# file upload management
+#
+
 @api_view(['GET'])
 def noteDownload(request, id):
     logging.info("noteDownload: id = " + str(id))
