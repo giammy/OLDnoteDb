@@ -13,7 +13,7 @@ from rest_framework.parsers import JSONParser
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework import viewsets
-# from rest_framework.response import Response
+from rest_framework import permissions
 
 from note.models import Note
 from note.serializers import NoteSerializer
@@ -60,6 +60,10 @@ def noteListCreate(request):
         retData, stts = createNote(note_data)
         return JsonResponse(retData, status=stts) 
 
+# api auth protected!
+#from django.contrib.auth.decorators import login_required
+# @ l o g i n _ r e q u i r e d
+
 @api_view(['GET', 'PUT', 'DELETE'])
 def noteDetail(request, id):
     try:
@@ -85,6 +89,11 @@ def noteDetail(request, id):
 
 @api_view(['GET'])
 def noteSearch(request):
+    
+    # we use the settings.py DEFAULT_PERMISSION_CLASSES
+    # permission_classes = [ permissions.AllowAny ]
+    # permission_classes = [ permissions.IsAuthenticated ]
+    # permission_classes = [ permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly ]
     
     id = request.GET.get('id', None)
     rid = request.GET.get('rid', None)

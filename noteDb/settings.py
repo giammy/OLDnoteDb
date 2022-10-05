@@ -14,15 +14,21 @@ from pathlib import Path
 import os
 import logging
 
+# LDAP AUTH
+import ldap
+from django_auth_ldap.config import LDAPSearch, GroupOfNamesType
+
+# read local settings file
+from .local_settings import *
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-79vi67m8#0fu$dp3q(^f!f+s76mib2im$m@)#qdw*uc9cpn!1e'
+SECRET_KEY = 'inLocalSettings'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -40,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'note',
     'rest_framework',
+    'rest_framework_simplejwt',
     'corsheaders',
 ]
 
@@ -55,8 +62,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-
 
 ]
 
@@ -121,33 +126,92 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+##  ____  _____ ____ _____ 
+## |  _ \| ____/ ___|_   _|
+## | |_) |  _| \___ \ | |  
+## |  _ <| |___ ___) || |  
+## |_| \_\_____|____/ |_|  
+##                         
+REST_FRAMEWORK = {
+    
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+        # 'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        # 'rest_framework.permissions.AllowAny',
+    ),
+
+    ## JWT
+    # Basic Auth    -   a username and password are passed with each API request. 
+    #                   This provides only a minimum level of security and user credentials are visible in the URLs
+    # Session Auth  -   requires the user to log in through the server-side application before using the API. 
+    #                   This is more secure than Basic Auth but is not convenient for working with single-page apps in a framework like Angular.
+    # JSON Web Tokens - are an industry standard mechanism for generating a token which can be passed in the HTTP headers of each request, 
+    #                   authenticating the user. This is the mechanism we will use for authentication.
+
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # 'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework.authentication.BasicAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication', 
+    ),
+
+}
+
+##   _     ____    _    ____  
+##  | |   |  _ \  / \  |  _ \ 
+##  | |   | | | |/ _ \ | |_) |
+##  | |___| |_| / ___ \|  __/ 
+##  |_____|____/_/   \_\_|    
+##                           
+
+# these are overridden by the local_settings.py file
+#AUTH_LDAP_SERVER_URI = "ldap://ldap.OVERRIDDEN.local:389"
+#AUTH_LDAP_BIND_DN = "cn=ldapsearchOVERRIDDENuser,cn=Users,dc=ldap,dc=local"
+#AUTH_LDAP_BIND_PASSWORD = "passwordOVERRIDDEN"
+#AUTH_LDAP_USER_SEARCH = LDAPSearch("cn=Users,dc=OVERRIDDEN,dc=local", ldap.SCOPE_SUBTREE, "(sAMAccountName=%(user)s)")
+
+# Populate the Django user from the LDAP directory.
+AUTH_LDAP_USER_ATTR_MAP = {
+    "first_name": "givenName",
+    "last_name": "sn",
+    "email": "mail",
+}
+
+# User authentication methods
+AUTHENTICATION_BACKENDS = [
+    "django_auth_ldap.backend.LDAPBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"django_auth_ldap": {"level": "DEBUG", "handlers": ["console"]}},
+}
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
-
 STATIC_ROOT = "static/"
-
 STATIC_URL = 'static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # folder containing files
 FILES_DIRECTORY = 'files'
+
 
 DATE_FORMAT_DB= "%Y-%m-%dT%H:%M:%S+0000"
 DATE_FORMAT_LOG= "%Y%m%dT%H%M%SZ"
