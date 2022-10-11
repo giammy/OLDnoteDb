@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 import os
 import logging
 
@@ -155,6 +156,23 @@ REST_FRAMEWORK = {
     ),
 
 }
+
+
+##
+##      ____.__      _____________
+##     |    /  \    /  \__    ___/
+##     |    \   \/\/   / |    |   
+## /\__|    |\        /  |    |   
+## \________| \__/\  /   |____|   
+##                 \/             
+##
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+}
+
+
 
 ##   _     ____    _    ____  
 ##  | |   |  _ \  / \  |  _ \ 

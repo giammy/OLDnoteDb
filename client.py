@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 import requests
 import json
 import random
@@ -19,7 +20,15 @@ import datetime
 
 # theUrl = "http://127.0.0.1:8000/note"
 # theUrl = "http://192.168.1.80/note"
-theUrl = "http://127.0.0.1:8080/note"
+theUrlBase = "http://127.0.0.1:8000"
+theUrlToken = theUrlBase + "/token/" # the url to get the JWT token
+theUrl = theUrlBase + "/note"
+
+
+theUsername = ""
+thePassword = ""
+theAuthorizationToken = None
+
 
 #
 # the following 2 functions create an example entity called STAFFMEMBER, 
@@ -69,8 +78,38 @@ def printNote(note):
     print(note)
     # print("%i,%i,%i,%s,%s\n" % (note['id'],note['rid'],note['lid'],note['type'],note['data']))
 
+#
+# get JWT token
+# MITICO! tutta la funzione
+#
+def getJWTToken(username, password):
+    global theUrlToken
+    resp = requests.post(url=theUrlToken,
+                         # headers={"Content-Type": "application/json"}, 
+                         data={'username': username, 'password': password})
+    # print(theUrlToken)
+    # if resp.status_code != 200:
+    #     # print("Error: %s" % (resp.text))
+    #     return resp.text
+    # return resp.text
+    return json.loads(resp.text)
+
+def auxGetHeaders():
+    global theAuthorizationToken
+    if theAuthorizationToken is None:
+        theAuthorizationToken = getJWTToken(theUsername, thePassword)
+        # print("token-refresh: %s" % (theAuthorizationToken['refresh']))
+        # print("token-access: %s" % (theAuthorizationToken['access']))
+
+    if 'access' in theAuthorizationToken.keys():
+        return {'Authorization': 'Bearer ' + theAuthorizationToken['access']}
+
+    print("Error: %s" % (theAuthorizationToken))
+    sys.exit()
+
+
 def auxGetAndReturnList(url):
-    resp = requests.get(url=url)
+    resp = requests.get(url=url, headers=auxGetHeaders())
     if (resp.status_code == 200):
         #print(resp.content)
         #print(resp.json())
@@ -95,7 +134,9 @@ def getEntities(whichType):
 
 # create a new note with a POST request
 def createNote(rid, type, data):
-    resp = requests.post(url=theUrl, json={"rid": rid, "lid": 0, "type": type, "data": data})
+    resp = requests.post(url=theUrl,
+                         headers=auxGetHeaders(), 
+                         json={"rid": rid, "lid": 0, "type": type, "data": data})
     # print(resp.status_code)
     if (resp.status_code == 200 or resp.status_code == 201 or resp.status_code == 202 or resp.status_code == 203):
         return resp.json()['id']
@@ -147,7 +188,7 @@ def initDb():
         return False
 
 def deleteNote(id):
-    resp = requests.delete(url=theUrl + "/" + str(id))
+    resp = requests.delete(url=theUrl + "/" + str(id), headers=auxGetHeaders())
     return(resp)
 
 def resetDb():
@@ -182,7 +223,13 @@ def getEntity(id):
 
 def main():
     global theUrl
+    global theUsername
+    global thePassword
+    global theAuthorizationToken
+
     parser = argparse.ArgumentParser()
+    parser.add_argument('--username', help='username for connection', type=str, metavar='username')
+    parser.add_argument('--password', help='password for connection', type=str, metavar='password')
     parser.add_argument('--initDb', help='Initialize the database', action='store_true')
     parser.add_argument('--resetDb', help='Reset the database. WARNING: ALL DATA WILL BE DELETED', action='store_true')
     parser.add_argument('--infoDb', help='Show some info on the database', action='store_true')
@@ -200,11 +247,19 @@ def main():
     
     args = parser.parse_args()
 
-    # if present, we need to set the hostname as first thing
+    # if present, we need to set hostname, username, password as first thing
     if args.__dict__['host'] != None:        
         theUrl = args.__dict__['host']
+    if args.__dict__['username'] != None:        
+        theUsername = args.__dict__['username']
+    if args.__dict__['password'] != None:        
+        thePassword = args.__dict__['password']
 
-    print("Current remote host for API: %s" % (theUrl))
+    # 
+    # get the authorization token and store it for the following calls
+    auxGetHeaders() 
+    print("User %s connected on remote API host: %s" % (theUsername, theUrl))
+
     for k, arg in args.__dict__.items():
         match k:
             case 'infoDb':
@@ -269,6 +324,13 @@ def main():
                     print("Creating %d staff members" % (arg))
                     createManyStaffMembers(arg, 10)
             case 'host':
+                # just to avoid the "Unmanaged flag" warning
+                pass
+            case 'username':
+                # just to avoid the "Unmanaged flag" warning
+                pass
+            
+            case 'password':
                 # just to avoid the "Unmanaged flag" warning
                 pass
             case _:
