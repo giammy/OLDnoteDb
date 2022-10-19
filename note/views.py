@@ -147,6 +147,8 @@ def noteQuery(request):
     itype = request.GET.get('itype', None)
     idata = request.GET.get('idata', None)
 
+    # logging.info("GETTING from user %s" % (request.user))
+
     # create a dictionary with nonull values                                                                              
     search_dict = {k: v for k, v in {'id': id, 
                    'rid': rid, 'lid': lid, 
