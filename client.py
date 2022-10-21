@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 import requests
 import json
@@ -107,7 +108,6 @@ def auxGetHeaders():
     print("Error: %s" % (theAuthorizationToken))
     sys.exit()
 
-
 def auxGetAndReturnList(url):
     resp = requests.get(url=url, headers=auxGetHeaders())
     if (resp.status_code == 200):
@@ -142,6 +142,13 @@ def createNote(rid, type, data):
         return resp.json()['id']
     else:
         return -1
+
+# TODO
+def isEntityAttributeDuplicate(rid, type, data):
+    pass
+
+def addAttributeToEntity(entityId, type, data):
+    return createNote(rid=entityId, type=type, data=data)
 
 def createEntity(jsonInfo):
     entityType = jsonInfo['__ENT__']
@@ -220,6 +227,115 @@ def getEntity(id):
     noteList = getAttributesOfNote(id)
     return noteList
 
+# MITICO!
+def deleteEntity(id):
+    noteList = getAttributesOfNote(id)
+    for note in noteList:
+        deleteNote(note['id'])
+    deleteNote(id)
+
+#
+# users management
+#
+
+def userAddToGroup(username, groupName):
+    print("Adding user %s to group %s" % (username, groupName))
+    jsonText = '{"__ENT__":"__AUTHSETUSERGROUP__", "USERNAME":"%s", "GROUP":"%s"}' % (username, groupName)
+    # print(jsonText)
+    jsonInfo = json.loads(jsonText)
+    createEntity(jsonInfo)
+
+def auxUserAndGroupsList():
+    idList = listEntities("__AUTHSETUSERGROUP__")
+    userGroupNodeList = list(map(lambda x: getEntity(x), idList))
+    userGroupList = list(map(lambda x: list(map(lambda y: y['data'], x)), userGroupNodeList))
+    return(userGroupList)
+
+def userList():
+    print("Listing users")
+    userList = list(map(lambda x: x[0], auxUserAndGroupsList()))
+    print(userList)
+    return None
+
+def userGroupList():
+    print("Listing active user groups")
+    groupList = list(map(lambda x: x[1], auxUserAndGroupsList()))
+    print(groupList)
+    return None
+
+def userRemoveFromGroup(username, groupName):
+    print("Removing user %s from group %s" % (username, groupName))
+    idList = listEntities("__AUTHSETUSERGROUP__")
+    userGroupNodeList = list(map(lambda x: getEntity(x), idList))
+    userGroupList = list(map(lambda x: list(map(lambda y: y['data'], x)), userGroupNodeList))
+    for i in range(len(userGroupList)):
+        if userGroupList[i][0] == username and userGroupList[i][1] == groupName:
+            deleteEntity(idList[i])
+            return True
+    return False
+
+#
+# default authorization groups management
+#
+
+def getIdOfAuthGroupList():
+    return(listEntities("AUTHGROUPLIST"))
+
+def groupList():
+    print("Listing default authorization groups (AUTHGROUPLIST):")
+    ids = getIdOfAuthGroupList()
+    if len(ids) == 1:
+        entity = getEntity(ids[0])
+        #print(entity)
+        for attr in entity:
+            print(attr['data'])
+    else:
+        print("Error: no AUTHGROUPLIST found")
+    return None
+
+def groupAdd(groupName):
+    print("Adding one default group: %s" % (groupName))
+    ids = getIdOfAuthGroupList()
+
+    if len(ids) > 1:
+        print("More than 1 AUTHGROUPLIST: remove the extra ones")
+        return None
+
+    if len(ids) < 1:
+        print("No AUTHGROUPLIST: creating one")
+        id = createNote(rid=0, type="AUTHGROUPLIST", data="__ENT__")
+    else:
+        id = ids[0]
+
+    # add attribute to entity
+    addAttributeToEntity(id, "GROUPNAME", groupName)
+    return None
+    
+# MITICO! tutta la funzione
+def groupRemove(groupName):
+    print("Removing one default group: %s" % (groupName))
+    ids = getIdOfAuthGroupList()
+
+    if len(ids) > 1:
+        print("More than 1 AUTHGROUPLIST: remove the extra ones")
+        return None
+
+    if len(ids) < 1:
+        print("No AUTHGROUPLIST: nothing to remove")
+        return None
+
+    id = ids[0]
+    entity = getEntity(id)
+    #print(entity)
+    for attr in entity:
+        if attr['type'] == "GROUPNAME" and attr['data'] == groupName:
+            deleteNote(attr['id'])
+            return None
+    print("Group %s not found" % (groupName))
+    return None
+#
+# main
+#
 
 def main():
     global theUrl
@@ -228,26 +344,53 @@ def main():
     global theAuthorizationToken
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--username', help='username for connection', type=str, metavar='username')
-    parser.add_argument('--password', help='password for connection', type=str, metavar='password')
+
+    # general db operations
+    parser.add_argument('--infoDb', help='Show some info on the database', action='store_true')
     parser.add_argument('--initDb', help='Initialize the database', action='store_true')
     parser.add_argument('--resetDb', help='Reset the database. WARNING: ALL DATA WILL BE DELETED', action='store_true')
-    parser.add_argument('--infoDb', help='Show some info on the database', action='store_true')
-    parser.add_argument('--countNotes', help='Count all the notes present in the database', action='store_true') 
-    parser.add_argument('--countEntities', help='Count all the entities present in the database', action='store_true')
-    parser.add_argument('--listEntities', help='List all the entities of given type', metavar='TYPE')  
+
+    # notes operations
+    parser.add_argument('--countNotes', help='Count all the notes present in the database', action='store_true')  
     parser.add_argument('--printNotes', help='Print all the notes present in the database', action='store_true')
+
+    # entities operations
+    parser.add_argument('--countEntities', help='Count all the entities present in the database', action='store_true')
+    parser.add_argument('--listEntities', help='List all the entities of given type', metavar='TYPE') 
     parser.add_argument('--createEntity', help='Create a new entity from the given JSON', 
                         metavar='{"__ENT__":"PC", "OWNER":"name1", "LOCATION":"office1"}')
     parser.add_argument('--searchEntity', help='Search an entity from the given JSON (search on 1 property only)', 
                         metavar='{"__ENT__":"PC", "OWNER":"name1"}')
     parser.add_argument('--getEntity', help='Get an entity', type=int, metavar='ID')
+    parser.add_argument('--deleteEntity', help='Delete an entity', type=int, metavar='ID')
+
+    # testing flag
     parser.add_argument('--createManyStaffMembers', help='Create may staff members', type=int, metavar='NUM')
-    parser.add_argument('--host', help='Set the host', metavar='URL of the host')  
-    
+
+    # user management
+    parser.add_argument('--userAddToGroup', help='Add a user to a group', metavar='username groupname', nargs='*', type=str)
+    parser.add_argument('--userRemoveFromGroup', help='Remove a user from a group', metavar='username groupname', nargs='*', type=str)
+    parser.add_argument('--userList', help='List users', action='store_true')
+    parser.add_argument('--userGroupList', help='List active groups', action='store_true')
+
+    # groups management
+    parser.add_argument('--groupAdd', help='Add a new default authorization group', metavar='GROUPNAME')
+    parser.add_argument('--groupRemove', help='Remove a new default authorization group', metavar='GROUPNAME')
+    parser.add_argument('--groupList', help='List default authorization groups', action='store_true') 
+
+    # configuration for accessing the database
+    parser.add_argument('--host', help='Set the host', metavar='URL of the host') 
+    parser.add_argument('--username', help='username for connection', type=str, metavar='username')
+    parser.add_argument('--password', help='password for connection', type=str, metavar='password') 
+
     args = parser.parse_args()
 
-    # if present, we need to set hostname, username, password as first thing
+    # check if a username and password are provided by environment variables
+    theUrl = os.environ.get("NOTEDB_URL", theUrl)
+    theUsername = os.getenv("NOTEDB_USERNAME", theUsername)
+    thePassword = os.getenv("NOTEDB_PASSWORD", thePassword)
+
+    # if the flag is present, we need to set hostname, username, password
     if args.__dict__['host'] != None:        
         theUrl = args.__dict__['host']
     if args.__dict__['username'] != None:        
@@ -262,6 +405,8 @@ def main():
 
     for k, arg in args.__dict__.items():
         match k:
+
+            # general db operations
             case 'infoDb':
                 if arg:
                     print("Show info about the database:")
@@ -270,7 +415,7 @@ def main():
                         print(res)
                     else:
                         print("Database not initialized.")  
-                    continue
+                continue
             case 'initDb':
                 if arg:
                     print("Initializing the database")
@@ -278,16 +423,25 @@ def main():
                         print("Database initialized")
                     else:
                         print("Database not initialized")
-                    continue
+                continue
             case 'resetDb':
                 if arg:
                     print("Resetting the database")
                     resetDb()
-                    continue
+                continue
+
+            # notes operations
             case 'countNotes':
                 if arg:
                     print("Counting the notes in the database: %d" % (countNotes()))
                 continue
+            case 'printNotes':
+                if arg:
+                    print("Printing the notes in the database:")
+                    printNotes()
+                continue
+
+            # entities operations
             case 'countEntities':
                 if arg:
                     print("Counting the entities in the database: %s" % (countEntities()))
@@ -295,11 +449,6 @@ def main():
             case 'listEntities':
                 if arg != None:
                     print("List the entities in the database: %s" % (listEntities(arg)))
-                continue
-            case 'printNotes':
-                if arg:
-                    print("Printing the notes in the database:")
-                    printNotes()
                 continue
             case 'createEntity':
                 if arg != None:
@@ -319,17 +468,60 @@ def main():
                     print("Getting entity: %s" % (arg))
                     res = getEntity(arg)
                     print(res)
+                continue
+            case 'deleteEntity':
+                if arg != None:
+                    print("Deleting entity: %s" % (arg))
+                    res = deleteEntity(arg)
+                    print(res)
+                continue
+
+            # testing flag
             case 'createManyStaffMembers':
                 if arg != None:
                     print("Creating %d staff members" % (arg))
                     createManyStaffMembers(arg, 10)
+                continue
+
+            # user management
+            case 'userAddToGroup':
+                if arg != None:
+                    userAddToGroup(arg[0], arg[1])
+                continue
+            case 'userRemoveFromGroup':
+                if arg != None:
+                    userRemoveFromGroup(arg[0], arg[1])
+                continue
+            case 'userList':
+                if arg:
+                    userList()
+                continue
+            case 'userGroupList':
+                if arg:
+                    userGroupList()
+                continue
+
+            # groups management
+            case 'groupAdd':
+                if arg:
+                    groupAdd(arg)
+                continue
+            case 'groupRemove':
+                if arg:
+                    groupRemove(arg)
+                continue
+            case 'groupList':
+                if arg:
+                    groupList()
+                continue
+
+            # configuration for accessing the database
             case 'host':
                 # just to avoid the "Unmanaged flag" warning
                 pass
             case 'username':
                 # just to avoid the "Unmanaged flag" warning
-                pass
-            
+                pass            
             case 'password':
                 # just to avoid the "Unmanaged flag" warning
                 pass
