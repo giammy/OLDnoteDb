@@ -243,3 +243,5 @@ logging.basicConfig(format='%(asctime)s: %(levelname)s: %(name)s: %(message)s',
                     datefmt='%Y%m%dT%H%M%SZ', 
                     filename='note.log', encoding='utf-8', level=logging.DEBUG)
 
+
+HARD_CODED_ADMINS = ['moro', 'mcarraro']
