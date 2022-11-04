@@ -51,7 +51,7 @@ def getListOfAuthorizedGroupsOfOneNote(note):
         if note.type == "AUTHREAD":
             authReadGroups.append(note.data)
         if note.type == "AUTHWRITE":
-            authWRITEGroups.append(note.data)
+            authWriteGroups.append(note.data)
         if note.type == "AUTHDENY":
             authDenyGroups.append(note.data)
     return authReadGroups, authWriteGroups, authDenyGroups

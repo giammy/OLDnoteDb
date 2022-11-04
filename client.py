@@ -8,6 +8,11 @@ import time
 import argparse
 import datetime
 
+# GUI
+import PySimpleGUI as sg
+import random
+import string
+
 #
 # a command line interface to REST API of notes
 # to get help use: ./client.py --help
@@ -96,6 +101,9 @@ def getJWTToken(username, password):
     return json.loads(resp.text)
 
 def auxGetHeaders():
+    global theUrl
+    global theUsername
+    global thePassword
     global theAuthorizationToken
     if theAuthorizationToken is None:
         theAuthorizationToken = getJWTToken(theUsername, thePassword)
@@ -382,6 +390,7 @@ def main():
     parser.add_argument('--host', help='Set the host', metavar='URL of the host') 
     parser.add_argument('--username', help='username for connection', type=str, metavar='username')
     parser.add_argument('--password', help='password for connection', type=str, metavar='password') 
+    parser.add_argument('--gui', help='Start GUI', action='store_true')
 
     args = parser.parse_args()
 
@@ -402,6 +411,9 @@ def main():
     # get the authorization token and store it for the following calls
     auxGetHeaders() 
     print("User %s connected on remote API host: %s" % (theUsername, theUrl))
+
+    if args.__dict__['gui'] != None:
+        guiManagement()
 
     for k, arg in args.__dict__.items():
         match k:
@@ -525,7 +537,134 @@ def main():
             case 'password':
                 # just to avoid the "Unmanaged flag" warning
                 pass
+            case 'gui':
+                # just to avoid the "Unmanaged flag" warning
+                pass
             case _:
                 print("Unmanaged flag: %s" % (k))
+
+
+##
+## GUI management
+##
+
+def guiManagement():
+    global theUrl
+    global theUsername
+    global thePassword
+    global theAuthorizationToken
+
+    # sg.theme('Dark Red')
+
+    sg.theme('Light Blue 2')
+
+    tableEntityTypesListValues = []
+    tableEntityListValues = []
+    tableEntityDetailsValues = []
+
+    header = [sg.Button("Connect"), sg.Text(theUsername), sg.Text(theUrl), sg.Text("Database not connected", key="-STATUS-")]
+
+    body = [sg.Table(values=tableEntityTypesListValues, headings=["_ _ Type of Entity _ _", "Num."], max_col_width=40,
+                    auto_size_columns=True,
+                    # cols_justification=('left','center','right','c', 'l', 'bad'),       # Added on GitHub only as of June 2022
+                    display_row_numbers=False,
+                    justification='center',
+                    num_rows=20,
+                    alternating_row_color='light blue3',
+                    key='-TABLE-ENTITY-TYPES-LIST-',
+                    selected_row_colors='white on blue',
+                    enable_events=True,
+                    expand_x=True,
+                    expand_y=True,
+                    # tooltip='This is the list of the Entities',
+                    vertical_scroll_only=False,
+                    enable_click_events=True           # Comment out to not enable header and other clicks
+                    ),
+            sg.Table(values=tableEntityListValues, headings=["Entity ID"], max_col_width=40,
+                    auto_size_columns=True,
+                    # cols_justification=('left','center','right','c', 'l', 'bad'),       # Added on GitHub only as of June 2022
+                    display_row_numbers=False,
+                    justification='center',
+                    num_rows=20,
+                    alternating_row_color='light blue3',
+                    key='-TABLE-ENTITY-LIST-',
+                    selected_row_colors='white on blue',
+                    enable_events=True,
+                    expand_x=True,
+                    expand_y=True,
+                    # tooltip='This is the selected Entity'
+                    vertical_scroll_only=False,
+                    enable_click_events=True,           # Comment out to not enable header and other clicks
+                    ),
+                sg.Table(values=tableEntityDetailsValues, headings=["_ _ _ _ _ Entity Details _ _ _ _ _"], max_col_width=40,
+                    auto_size_columns=True,
+                    # cols_justification=('left','center','right','c', 'l', 'bad'),       # Added on GitHub only as of June 2022
+                    display_row_numbers=False,
+                    justification='center',
+                    num_rows=20,
+                    alternating_row_color='light blue3',
+                    key='-TABLE-ENTITY-CONTENTS-',
+                    selected_row_colors='white on blue',
+                    enable_events=True,
+                    expand_x=True,
+                    expand_y=True,
+                    # tooltip='This is the selected Entity'
+                    vertical_scroll_only=False,
+                    enable_click_events=True,           # Comment out to not enable header and other clicks
+                    )
+                ]
+
+    layout = [  header,
+                [sg.HorizontalSeparator()],
+                body,
+                #[sg.Text('Window with elements on the left and the right')],
+                #[sg.T('Using a Stretch element that expands enables you to "push" other elements around')],
+                #[sg.HorizontalSeparator()],
+                [sg.VStretch()],   # Stretch verticaly                                                               
+                #[sg.Button('Left'), sg.Stretch(), sg.Button('Right')],
+                [sg.Stretch(), sg.B('Quit')]
+                #[sg.Button('Left'), sg.Stretch(), sg.B('Middle'),  sg.Stretch(),  sg.Button('Quit')]  
+            ]
+            
+    # Create the window                                                                                              
+    window = sg.Window("NoteDbGUI", layout, resizable=True, finalize=True, font=("Helvetica", 16))
+
+    # init: TODO duplicated code!!!
+    ent = countEntities()
+    tableEntityTypesListValues = []
+    for e,n in ent.items():
+        tableEntityTypesListValues.append([e,n])
+    window[f'-STATUS-'].update("CONNECTED")
+    window['-TABLE-ENTITY-TYPES-LIST-'].update(values=tableEntityTypesListValues)
+
+    # Create an event loop                                                                                           
+    while True:
+        event, values = window.read()                                                                                                
+        # End program if user closes window or presses the OK button                                                                                      
+        if event == "Quit" or event == sg.WIN_CLOSED:
+            break
+        if event == "Connect":
+            ent = countEntities()
+            tableEntityTypesListValues = []
+            for e,n in ent.items():
+                tableEntityTypesListValues.append([e,n])
+            window[f'-STATUS-'].update("CONNECTED")
+            window['-TABLE-ENTITY-TYPES-LIST-'].update(values=tableEntityTypesListValues)
+        elif event == "-TABLE-ENTITY-TYPES-LIST-":
+            clickedRaw = values['-TABLE-ENTITY-TYPES-LIST-'][0]
+            clickedEntity = tableEntityTypesListValues[clickedRaw][0] 
+            tableEntityListValues = listEntities(clickedEntity)
+            window['-TABLE-ENTITY-LIST-'].update(values=tableEntityListValues)
+            tableEntityDetailsValues = []
+            window['-TABLE-ENTITY-CONTENTS-'].update(values=tableEntityDetailsValues)
+        elif event == '-TABLE-ENTITY-LIST-':
+            if len(values['-TABLE-ENTITY-LIST-']) > 0:
+                clickedRaw = values['-TABLE-ENTITY-LIST-'][0]
+                clickedEntityId = tableEntityListValues[clickedRaw] 
+                res = getEntity(clickedEntityId)
+                tableEntityDetailsValues = list(map(lambda x: '"' + x['type'] + ": " + x['data'] + '"', res))
+                window['-TABLE-ENTITY-CONTENTS-'].update(values=tableEntityDetailsValues)
+    window.close()
+    exit
 
 main()
