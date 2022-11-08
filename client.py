@@ -348,6 +348,7 @@ def main():
     global theUsername
     global thePassword
     global theAuthorizationToken
+    global debugLevel
 
     parser = argparse.ArgumentParser()
 
@@ -390,6 +391,9 @@ def main():
     parser.add_argument('--password', help='password for connection', type=str, metavar='password') 
     parser.add_argument('--gui', help='Start GUI', action='store_true')
 
+    # debug
+    parser.add_argument('--debug', help='Set debug level', type=int, metavar='debug level (0-9)')
+
     args = parser.parse_args()
 
     # check if a username and password are provided by environment variables
@@ -404,6 +408,8 @@ def main():
         theUsername = args.__dict__['username']
     if args.__dict__['password'] != None:        
         thePassword = args.__dict__['password']
+    if args.__dict__['debug'] != None:
+        debugLevel = args.__dict__['debug']
 
     # 
     # get the authorization token and store it for the following calls
@@ -526,6 +532,9 @@ def main():
                 continue
 
             # configuration for accessing the database
+            case 'debug':
+                # just to avoid the "Unmanaged flag" warning
+                pass
             case 'host':
                 # just to avoid the "Unmanaged flag" warning
                 pass
@@ -563,13 +572,36 @@ def confirmWindow(str):
         return True
     return False
     
+def addEntityWindow():
+    # define the window layout
+    layout = [[sg.Text('Add entity', font='Any 20')],
+              [sg.Text('Name', size=(15, 1)), sg.InputText()],
+              [sg.Text('Description', size=(15, 1)), sg.InputText()],
+              [sg.Text('Type', size=(15, 1)), sg.InputText()],
+              [sg.Text('Tags', size=(15, 1)), sg.InputText()],
+              [sg.Text('Attributes', size=(15, 1)), sg.InputText()],
+              [sg.Text('Notes', size=(15, 1)), sg.InputText()],
+              [sg.Cancel(), sg.Stretch(), sg.Submit(),]]
+    # create the window
+    window = sg.Window('Add entity', layout, keep_on_top=True)
+    # display and interact with the Window
+    event, values = window.read()
+    # close the window
+    window.close()
+    
 
 def updateEntityTypesList(window):
+    global tableEntityListValues
+    global tableEntityDetailsValues
     ent = countEntities()
     list = []
     for e,n in ent.items():
         list.append([e,n]) 
     window['-TABLE-ENTITY-TYPES-LIST-'].update(values=list)
+    tableEntityListValues = []
+    window['-TABLE-ENTITY-LIST-'].update(values=tableEntityListValues)
+    tableEntityDetailsValues = []
+    window['-TABLE-ENTITY-CONTENTS-'].update(values=tableEntityDetailsValues)
     return list
 
 def guiManagement():
@@ -579,24 +611,21 @@ def guiManagement():
     global theAuthorizationToken
     global debugLevel
 
-    # sg.theme('Dark Red')
-
     sg.theme('Light Blue 2')
 
     tableEntityTypesListValues = []
     tableEntityListValues = []
     tableEntityDetailsValues = []
 
-    #menuDefinition = [['&File', ['&Open     Ctrl-O', '&Save       Ctrl-S', '&Properties', 'E&xit']],
-    #                  ['&Edit', ['&Paste', ['Special', 'Normal', ], 'Undo'], ],
-    #                  ['&Toolbar', ['---', 'Command &1', 'Command &2', '---', 'Command &3', 'Command &4']],
-    #                  ['&Help', '&About...'], ]
-
-    fileMenu = ['Unused', ['Quit']]
-    actionMenu = ['Unused', ['Reset/Initialize', 'Create DEMO entries']] # 'Create Entity', 'Search Entity', 'Get Entity', 'Delete Entity']]
-    helpMenu = ['Unused', ['About']]
-
-    # header = [sg.Button("Connect"), sg.Text(theUsername), sg.Text(theUrl), sg.Text("Database not connected", key="-STATUS-")]
+    fileMenu =   [  'Unused', 
+                    ['Quit']]
+    adminMenu = [  'Unused', 
+                    ['Reset/Initialize', 
+                    'Create DEMO entries']]
+    actionMenu = [  'Unused', 
+                    ['Add entity']] 
+    helpMenu =   [  'Unused', 
+                    ['About']]
 
     body = [sg.Table(values=tableEntityTypesListValues, headings=["_ _ Type of Entity _ _", "Num."], max_col_width=40,
                     auto_size_columns=True,
@@ -650,22 +679,15 @@ def guiManagement():
 
     layout = [  
                 #[sg.Menu(menuDefinition, tearoff=False, pad=(200, 1))],
-                [sg.ButtonMenu('File',  fileMenu, key='-FILEMENU-'), sg.ButtonMenu('Action',  actionMenu, key='-ACTIONMENU-'), sg.ButtonMenu('Help',  helpMenu, key='-HELPMENU-')],
+                [sg.ButtonMenu('File',  fileMenu, key='-FILEMENU-'), sg.ButtonMenu('Action',  actionMenu, key='-ACTIONMENU-'), sg.ButtonMenu('Admin',  adminMenu, key='-ADMINMENU-'), sg.ButtonMenu('Help',  helpMenu, key='-HELPMENU-')],
                 # header,
                 [sg.HorizontalSeparator()],
                 body,
                 #[sg.Text('Window with elements on the left and the right')],
                 #[sg.T('Using a Stretch element that expands enables you to "push" other elements around')],
-                #[sg.HorizontalSeparator()],
                 [sg.VStretch()],   # Stretch verticaly                                                               
-                #[sg.Button('Left'), sg.Stretch(), sg.Button('Right')],
-                [sg.Button("Connect"), sg.Text(theUsername), sg.Text(theUrl), sg.Text("Database not connected", key="-STATUS-"), sg.Stretch(), sg.B('Quit')]
-                #[sg.Button('Left'), sg.Stretch(), sg.B('Middle'),  sg.Stretch(),  sg.Button('Quit')]  
+                [sg.Button("Connect"), sg.Text(theUsername), sg.Text(theUrl), sg.Text("Database not connected", key="-STATUS-"), sg.Stretch(), sg.B('Quit')] 
             ]
-
-
-    #menu_def = [['Customize GUI', ['Background', ['White::white', 'Purple::purple']]]]
-    #layoutTest = [[sg.Menu(menu_def)]]
 
     # Create the window                                                                                              
     window = sg.Window("NoteDbGUI", layout, resizable=True, finalize=True, font=("Helvetica", 16))
@@ -678,8 +700,7 @@ def guiManagement():
     while True:
         event, values = window.read()     
         if debugLevel > 0:
-            print(event, "\n", values)                                                                                          
-        # End program if user closes window or presses the OK button                                                                                      
+            print(event, "\n", values)                                                                                     
         if event == "Quit" or event == sg.WIN_CLOSED:
             break
         if event == "Connect":
@@ -707,20 +728,26 @@ def guiManagement():
         elif event == '-FILEMENU-':
             if values['-FILEMENU-'] == 'Quit':
                 break
-        elif event == '-ACTIONMENU-':
-            if values['-ACTIONMENU-'] == 'Reset/Initialize':
+        elif event == '-ADMINMENU-':
+            if values['-ADMINMENU-'] == 'Reset/Initialize':
                 if confirmWindow("Reset/Initialize?"):
-                    # print("Reset/Initialize")
+                    if debugLevel > 0:
+                        print("Reset/Initialize")
                     resetDb()
                     initDb()
                     tableEntityTypesListValues = updateEntityTypesList(window)
                 else:
-                    pass
-                    #    print("SKIP Reset/Initialize")
-            elif values['-ACTIONMENU-'] == 'Create DEMO entries':
+                    if debugLevel > 0:
+                        print("SKIP Reset/Initialize")
+            elif values['-ADMINMENU-'] == 'Create DEMO entries':
                 if confirmWindow("Create DEMO entries?"):
                     createDemoEntries(10,10)
                     tableEntityTypesListValues = updateEntityTypesList(window)
+        elif event == '-ACTIONMENU-':
+            if values['-ACTIONMENU-'] == 'Add entity':
+                if debugLevel > 0:
+                    print("Add entity")
+                addEntityWindow()
     window.close()
     exit
 
