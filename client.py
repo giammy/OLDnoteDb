@@ -13,6 +13,8 @@ import PySimpleGUI as sg
 import random
 import string
 
+debugLevel = 0
+
 #
 # a command line interface to REST API of notes
 # to get help use: ./client.py --help
@@ -41,8 +43,8 @@ theAuthorizationToken = None
 # they are invoked by the option --createManyStaffMembers NUM
 # to fill the database for testing purposes
 #
-def createStaffMember(username, email, secondaryEmail, name, surname, groupName, leaderOfGroup, qualification, organization, totalHoursPerYear, totalContractualHoursPerYear, parttimePercent, isTimeSheetEnabled, created, validFrom, validTo, note, officePhone, officeLocation, internalNote, lastChangeAuthor, lastChangeDate):
-    rid = createNote(rid=0, type="STAFFMEMBER", data="null") # if data="", the note is created with return code 400
+def createStaffMember(username, email, secondaryEmail, name, surname, groupName, leaderOfGroup, created, validFrom, validTo, note, officePhone, officeLocation, lastChangeAuthor, lastChangeDate):
+    rid = createNote(rid=0, type="STAFFAGENDA", data="null") # if data="", the note is created with return code 400
     createNote(rid=rid, type="USERNAME", data=username)
     createNote(rid=rid, type="EMAIL", data=email)
     createNote(rid=rid, type="SECONDARYEMAIL", data=secondaryEmail)
@@ -50,28 +52,24 @@ def createStaffMember(username, email, secondaryEmail, name, surname, groupName,
     createNote(rid=rid, type="SURNAME", data=surname)
     createNote(rid=rid, type="GROUPNAME", data=groupName)
     createNote(rid=rid, type="LEADEROFGROUP", data=leaderOfGroup)
-    createNote(rid=rid, type="QUALIFICATION", data=qualification)
-    createNote(rid=rid, type="ORGANIZATION", data=organization)
-    createNote(rid=rid, type="TOTALHOURSPERYEAR", data=totalHoursPerYear)
-    createNote(rid=rid, type="TOTALCONTRACTUALHOURSPERYEAR", data=totalContractualHoursPerYear)
-    createNote(rid=rid, type="PARTTIMEPERCENT", data=parttimePercent)
-    createNote(rid=rid, type="ISTIMESHEETENABLED", data=isTimeSheetEnabled)
     createNote(rid=rid, type="CREATED", data=created)
     createNote(rid=rid, type="VALIDFROM", data=validFrom)
     createNote(rid=rid, type="VALIDTO", data=validTo)
     createNote(rid=rid, type="NOTE", data=note)
     createNote(rid=rid, type="OFFICEPHONE", data=officePhone)
+    createNote(rid=rid, type="OFFICEPHONE2", data=officePhone)
     createNote(rid=rid, type="OFFICELOCATION", data=officeLocation)
-    createNote(rid=rid, type="INTERNALNOTE", data=internalNote)
     createNote(rid=rid, type="LASTCHANGEAUTHOR", data=lastChangeAuthor)
     createNote(rid=rid, type="LASTCHANGEDATE", data=lastChangeDate)
+    createNote(rid=rid, type="AUTHREAD", data="AUTHENTICATED")
+    createNote(rid=rid, type="AUTHWRITE", data="AUTHENTICATED")
     return rid
 
-def createManyStaffMembers(num, numberOfGroups):
+def createDemoEntries(num, par2):
     startTime = time.time()
     for i in range(0, num):
-        createStaffMember(username="username%d" % (i), email="email%d@email.it" % (i), secondaryEmail="email%d@email.it" % (i), name="name%d" % (i), surname="surname%d" % (i), groupName="Group%d"%(random.randint(1, numberOfGroups)), leaderOfGroup="leaderOfGroup%d" % (i), qualification="qualification%d" % (i), organization="organization%d" % (i), totalHoursPerYear="totalHoursPerYear%d" % (i), totalContractualHoursPerYear="totalContractualHoursPerYear%d" % (i), parttimePercent="parttimePercent%d" % (i), isTimeSheetEnabled="isTimeSheetEnabled%d" % (i), created="created%d" % (i), validFrom="validFrom%d" % (i), validTo="validTo%d" % (i), note="note%d" % (i), officePhone="officePhone%d" % (i), officeLocation="officeLocation%d" % (i), internalNote="internalNote%d" % (i), lastChangeAuthor="lastChangeAuthor%d" % (i), lastChangeDate="lastChangeDate%d" % (i))
-    print("Created %d staff members in %s seconds" % (num, time.time() - startTime))
+        createStaffMember(username="username%d" % (i), email="email%d@email.it" % (i), secondaryEmail="email%d@email.it" % (i), name="name%d" % (i), surname="surname%d" % (i), groupName="Group%d"%(random.randint(1, par2)), leaderOfGroup="leaderOfGroup%d" % (i), created="created%d" % (i), validFrom="validFrom%d" % (i), validTo="validTo%d" % (i), note="note%d" % (i), officePhone="officePhone%d" % (i), officeLocation="officeLocation%d" % (i), lastChangeAuthor="lastChangeAuthor%d" % (i), lastChangeDate="lastChangeDate%d" % (i))
+    print("Created %d entries in %s seconds" % (num, time.time() - startTime))
 
 #
 # general functions
@@ -373,7 +371,7 @@ def main():
     parser.add_argument('--deleteEntity', help='Delete an entity', type=int, metavar='ID')
 
     # testing flag
-    parser.add_argument('--createManyStaffMembers', help='Create may staff members', type=int, metavar='NUM')
+    parser.add_argument('--createDemoEntries', help='Create DEMO entries', type=int, metavar='NUM')
 
     # user management
     parser.add_argument('--userAddToGroup', help='Add a user to a group', metavar='username groupname', nargs='*', type=str)
@@ -489,10 +487,10 @@ def main():
                 continue
 
             # testing flag
-            case 'createManyStaffMembers':
+            case 'createDemoEntries':
                 if arg != None:
-                    print("Creating %d staff members" % (arg))
-                    createManyStaffMembers(arg, 10)
+                    print("Creating %d entries" % (arg))
+                    createDemoEntries(arg, 10)
                 continue
 
             # user management
@@ -548,11 +546,38 @@ def main():
 ## GUI management
 ##
 
+def aboutWindow():
+    layout = [[sg.Text('NoteDb GUI', font='Any 20')],
+              [sg.OK()]]
+    window = sg.Window('Second Form', layout, keep_on_top=True)
+    event, values = window.read()
+    window.close()
+
+def confirmWindow(str):
+    layout = [[sg.Text('CONFIRM ' + str, font='Any 20')],
+              [sg.Cancel(), sg.OK()]]
+    window = sg.Window('Confirm?', layout, keep_on_top=True)
+    event, values = window.read()
+    window.close()
+    if event == 'OK':   
+        return True
+    return False
+    
+
+def updateEntityTypesList(window):
+    ent = countEntities()
+    list = []
+    for e,n in ent.items():
+        list.append([e,n]) 
+    window['-TABLE-ENTITY-TYPES-LIST-'].update(values=list)
+    return list
+
 def guiManagement():
     global theUrl
     global theUsername
     global thePassword
     global theAuthorizationToken
+    global debugLevel
 
     # sg.theme('Dark Red')
 
@@ -562,7 +587,16 @@ def guiManagement():
     tableEntityListValues = []
     tableEntityDetailsValues = []
 
-    header = [sg.Button("Connect"), sg.Text(theUsername), sg.Text(theUrl), sg.Text("Database not connected", key="-STATUS-")]
+    #menuDefinition = [['&File', ['&Open     Ctrl-O', '&Save       Ctrl-S', '&Properties', 'E&xit']],
+    #                  ['&Edit', ['&Paste', ['Special', 'Normal', ], 'Undo'], ],
+    #                  ['&Toolbar', ['---', 'Command &1', 'Command &2', '---', 'Command &3', 'Command &4']],
+    #                  ['&Help', '&About...'], ]
+
+    fileMenu = ['Unused', ['Quit']]
+    actionMenu = ['Unused', ['Reset/Initialize', 'Create DEMO entries']] # 'Create Entity', 'Search Entity', 'Get Entity', 'Delete Entity']]
+    helpMenu = ['Unused', ['About']]
+
+    # header = [sg.Button("Connect"), sg.Text(theUsername), sg.Text(theUrl), sg.Text("Database not connected", key="-STATUS-")]
 
     body = [sg.Table(values=tableEntityTypesListValues, headings=["_ _ Type of Entity _ _", "Num."], max_col_width=40,
                     auto_size_columns=True,
@@ -614,7 +648,10 @@ def guiManagement():
                     )
                 ]
 
-    layout = [  header,
+    layout = [  
+                #[sg.Menu(menuDefinition, tearoff=False, pad=(200, 1))],
+                [sg.ButtonMenu('File',  fileMenu, key='-FILEMENU-'), sg.ButtonMenu('Action',  actionMenu, key='-ACTIONMENU-'), sg.ButtonMenu('Help',  helpMenu, key='-HELPMENU-')],
+                # header,
                 [sg.HorizontalSeparator()],
                 body,
                 #[sg.Text('Window with elements on the left and the right')],
@@ -622,41 +659,40 @@ def guiManagement():
                 #[sg.HorizontalSeparator()],
                 [sg.VStretch()],   # Stretch verticaly                                                               
                 #[sg.Button('Left'), sg.Stretch(), sg.Button('Right')],
-                [sg.Stretch(), sg.B('Quit')]
+                [sg.Button("Connect"), sg.Text(theUsername), sg.Text(theUrl), sg.Text("Database not connected", key="-STATUS-"), sg.Stretch(), sg.B('Quit')]
                 #[sg.Button('Left'), sg.Stretch(), sg.B('Middle'),  sg.Stretch(),  sg.Button('Quit')]  
             ]
-            
+
+
+    #menu_def = [['Customize GUI', ['Background', ['White::white', 'Purple::purple']]]]
+    #layoutTest = [[sg.Menu(menu_def)]]
+
     # Create the window                                                                                              
     window = sg.Window("NoteDbGUI", layout, resizable=True, finalize=True, font=("Helvetica", 16))
 
-    # init: TODO duplicated code!!!
-    ent = countEntities()
-    tableEntityTypesListValues = []
-    for e,n in ent.items():
-        tableEntityTypesListValues.append([e,n])
+    # init
     window[f'-STATUS-'].update("CONNECTED")
-    window['-TABLE-ENTITY-TYPES-LIST-'].update(values=tableEntityTypesListValues)
+    tableEntityTypesListValues = updateEntityTypesList(window)
 
     # Create an event loop                                                                                           
     while True:
-        event, values = window.read()                                                                                                
+        event, values = window.read()     
+        if debugLevel > 0:
+            print(event, "\n", values)                                                                                          
         # End program if user closes window or presses the OK button                                                                                      
         if event == "Quit" or event == sg.WIN_CLOSED:
             break
         if event == "Connect":
-            ent = countEntities()
-            tableEntityTypesListValues = []
-            for e,n in ent.items():
-                tableEntityTypesListValues.append([e,n])
+            tableEntityTypesListValues = updateEntityTypesList(window)
             window[f'-STATUS-'].update("CONNECTED")
-            window['-TABLE-ENTITY-TYPES-LIST-'].update(values=tableEntityTypesListValues)
         elif event == "-TABLE-ENTITY-TYPES-LIST-":
-            clickedRaw = values['-TABLE-ENTITY-TYPES-LIST-'][0]
-            clickedEntity = tableEntityTypesListValues[clickedRaw][0] 
-            tableEntityListValues = listEntities(clickedEntity)
-            window['-TABLE-ENTITY-LIST-'].update(values=tableEntityListValues)
-            tableEntityDetailsValues = []
-            window['-TABLE-ENTITY-CONTENTS-'].update(values=tableEntityDetailsValues)
+            if len(values['-TABLE-ENTITY-TYPES-LIST-']) > 0:
+                clickedRaw = values['-TABLE-ENTITY-TYPES-LIST-'][0]
+                clickedEntity = tableEntityTypesListValues[clickedRaw][0] 
+                tableEntityListValues = listEntities(clickedEntity)
+                window['-TABLE-ENTITY-LIST-'].update(values=tableEntityListValues)
+                tableEntityDetailsValues = []
+                window['-TABLE-ENTITY-CONTENTS-'].update(values=tableEntityDetailsValues)
         elif event == '-TABLE-ENTITY-LIST-':
             if len(values['-TABLE-ENTITY-LIST-']) > 0:
                 clickedRaw = values['-TABLE-ENTITY-LIST-'][0]
@@ -664,6 +700,27 @@ def guiManagement():
                 res = getEntity(clickedEntityId)
                 tableEntityDetailsValues = list(map(lambda x: '"' + x['type'] + ": " + x['data'] + '"', res))
                 window['-TABLE-ENTITY-CONTENTS-'].update(values=tableEntityDetailsValues)
+        elif event == '-HELPMENU-':
+            if values['-HELPMENU-'] == 'About':
+                # sg.popup('About this program', 'Version 1.0', 'PySimpleGUI rocks...')
+                aboutWindow()
+        elif event == '-FILEMENU-':
+            if values['-FILEMENU-'] == 'Quit':
+                break
+        elif event == '-ACTIONMENU-':
+            if values['-ACTIONMENU-'] == 'Reset/Initialize':
+                if confirmWindow("Reset/Initialize?"):
+                    # print("Reset/Initialize")
+                    resetDb()
+                    initDb()
+                    tableEntityTypesListValues = updateEntityTypesList(window)
+                else:
+                    pass
+                    #    print("SKIP Reset/Initialize")
+            elif values['-ACTIONMENU-'] == 'Create DEMO entries':
+                if confirmWindow("Create DEMO entries?"):
+                    createDemoEntries(10,10)
+                    tableEntityTypesListValues = updateEntityTypesList(window)
     window.close()
     exit
 
