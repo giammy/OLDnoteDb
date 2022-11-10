@@ -13,6 +13,8 @@ import PySimpleGUI as sg
 import random
 import string
 
+import client_input
+
 debugLevel = 0
 
 #
@@ -177,6 +179,17 @@ def searchEntity(jsonInfo):
     idList = list(map(lambda x: x['rid'], noteList))
     resList = list(filter(lambda x: checkType(entityType, getNote(x)), idList))
     return resList
+
+def getListOfAttributes(entityName):
+    entities = getEntities(entityName)
+    list = []
+    if len(entities) <= 0:
+        return list
+    # TODO get a merge of attributes of all entities
+    attr = getAttributesOfNote(entities[0]['id'])
+    for n in attr:
+        list.append(n['type']) 
+    return list
 
 #
 # Available operations
@@ -555,12 +568,15 @@ def main():
 ## GUI management
 ##
 
-def aboutWindow():
-    layout = [[sg.Text('NoteDb GUI', font='Any 20')],
+def infoWindow(title, message):
+    layout = [[sg.Text(message, font='Any 20')],
               [sg.OK()]]
-    window = sg.Window('Second Form', layout, keep_on_top=True)
+    window = sg.Window(title, layout, keep_on_top=True)
     event, values = window.read()
     window.close()
+
+def aboutWindow():
+    infoWindow("About", "NoteDb GUI")
 
 def confirmWindow(str):
     layout = [[sg.Text('CONFIRM ' + str, font='Any 20')],
@@ -572,23 +588,35 @@ def confirmWindow(str):
         return True
     return False
     
-def addEntityWindow():
-    # define the window layout
-    layout = [[sg.Text('Add entity', font='Any 20')],
-              [sg.Text('Name', size=(15, 1)), sg.InputText()],
-              [sg.Text('Description', size=(15, 1)), sg.InputText()],
-              [sg.Text('Type', size=(15, 1)), sg.InputText()],
-              [sg.Text('Tags', size=(15, 1)), sg.InputText()],
-              [sg.Text('Attributes', size=(15, 1)), sg.InputText()],
-              [sg.Text('Notes', size=(15, 1)), sg.InputText()],
-              [sg.Cancel(), sg.Stretch(), sg.Submit(),]]
-    # create the window
-    window = sg.Window('Add entity', layout, keep_on_top=True)
+def addEntityAttributesWindow(title, listOfAttributes):
+    layoutBody = list(map(lambda s: [sg.Text(s), sg.InputText()], listOfAttributes))
+    layout = [[sg.Text('Compile attributes', font='Any 20')]] + layoutBody + [[sg.Cancel(), sg.Stretch(), sg.Submit(),]]
+    window = sg.Window('Add attributes for entity ' + title, layout, keep_on_top=True)
     # display and interact with the Window
     event, values = window.read()
-    # close the window
     window.close()
     
+def addEntityWindow():
+    list = countEntities()
+    entityList = []
+    for e,n in list.items():
+        entityList.append(e) 
+    entityName = client_input.inputWindow("Entity name", "Input Entity Name", "", entityList)
+    if (len(entityName)) == 0:
+        return
+    listOfAttributes = getListOfAttributes(entityName)
+    # print(listOfAttributes)
+    # listOfValues = addEntityAttributesWindow(entityName, listOfAttributes)
+    # print(listOfValues)
+
+    l1 = map(lambda s: '"' + s + '": "val"', listOfAttributes)
+    str = '{"__ENT__": "' + entityName + '", ' + ', '.join([*l1]) + '}'
+    issueStr = client_input.inputWindow("Build String", "", str, [])
+    if debugLevel > 0:
+        print(issueStr)
+    if len(issueStr) > 0:
+        createEntity(json.loads(issueStr))
+        infoWindow("Info", "Entity created")
 
 def updateEntityTypesList(window):
     global tableEntityListValues
@@ -612,6 +640,8 @@ def guiManagement():
     global debugLevel
 
     sg.theme('Light Blue 2')
+
+    print(sg.get_versions())
 
     tableEntityTypesListValues = []
     tableEntityListValues = []
@@ -680,11 +710,8 @@ def guiManagement():
     layout = [  
                 #[sg.Menu(menuDefinition, tearoff=False, pad=(200, 1))],
                 [sg.ButtonMenu('File',  fileMenu, key='-FILEMENU-'), sg.ButtonMenu('Action',  actionMenu, key='-ACTIONMENU-'), sg.ButtonMenu('Admin',  adminMenu, key='-ADMINMENU-'), sg.ButtonMenu('Help',  helpMenu, key='-HELPMENU-')],
-                # header,
                 [sg.HorizontalSeparator()],
                 body,
-                #[sg.Text('Window with elements on the left and the right')],
-                #[sg.T('Using a Stretch element that expands enables you to "push" other elements around')],
                 [sg.VStretch()],   # Stretch verticaly                                                               
                 [sg.Button("Connect"), sg.Text(theUsername), sg.Text(theUrl), sg.Text("Database not connected", key="-STATUS-"), sg.Stretch(), sg.B('Quit')] 
             ]
@@ -748,6 +775,7 @@ def guiManagement():
                 if debugLevel > 0:
                     print("Add entity")
                 addEntityWindow()
+                updateEntityTypesList(window)
     window.close()
     exit
 
