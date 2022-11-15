@@ -1,4 +1,4 @@
-# noteDb
+# note
 
 # Project MOVED to repository https://github.com/giammy/noteDb
 
